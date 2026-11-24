@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SR Cek Stok</title><meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mu:#667085;--bd:#dfe3e8;--pr:#0f766e;--pt:#fff;--wa:#fff4d6;--er:#b42318}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#14171a;--card:#1e2328;--tx:#eceff2;--mu:#9aa4af;--bd:#2f363d;--pr:#2dd4bf;--pt:#06201d;--wa:#3a3115;--er:#f97066}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#14171a;--card:#1e2328;--tx:#eceff2;--mu:#9aa4af;--bd:#2f363d;--pr:#2dd4bf;--pt:#06201d;--wa:#3a3115;--er:#f97066}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:env(safe-area-inset-top,0px);background:var(--card);border-bottom:1px solid var(--bd);z-index:5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--card);z-index:10}
+.brand{padding:10px 14px 0;font-weight:700;display:flex;justify-content:space-between;gap:8px}#who{font-weight:400;font-size:13px;color:var(--mu)}#who a{color:var(--pr)}
+nav{display:flex;gap:4px;padding:6px 10px}
+nav button{flex:1;padding:9px 4px;border:0;border-radius:8px;background:none;color:var(--mu);font:inherit;font-weight:600}
+nav button.on{background:var(--pr);color:var(--pt)}
+main{max-width:860px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+h2{font-size:17px;margin:0 0 8px}h3{font-size:15px;margin:12px 0 6px}
+.mu{color:var(--mu);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sup{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 10px;border:1px solid var(--bd);border-radius:10px;margin-top:8px;cursor:pointer}
+.badge{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--wa);white-space:nowrap}
+.badge.ok{background:var(--pr);color:var(--pt)}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px;max-width:100%}
+textarea{width:100%;min-height:70px}
+button.b{font:inherit;font-weight:600;border:0;border-radius:8px;padding:9px 14px;background:var(--pr);color:var(--pt)}
+button.g{background:none;border:1px solid var(--bd);color:var(--tx)}
+button.x{background:none;border:0;color:var(--er);font-size:18px}
+.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:7px 6px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--mu)}
+td input.st{width:84px}
+.ord{font-weight:700;color:var(--pr);font-size:17px;white-space:nowrap}
+.warn{background:var(--wa);border-radius:10px;padding:10px}
+.tag{font-size:11px;color:var(--mu);border:1px solid var(--bd);border-radius:6px;padding:0 5px;margin-left:4px}
+</style></head><body>
+<header><div class="brand"><span>📦 SR Cek Stok · Sumber Rasa</span><span id="who"></span></div><nav id="nav"></nav></header>
+<main id="app"><p class="mu">Memuat…</p></main>
+<script>
+// ISI dari Firebase Console > Project settings > Your apps > Web app
+const FIREBASE_CONFIG={apiKey:"ISI_API_KEY",authDomain:"ISI.firebaseapp.com",projectId:"ISI",storageBucket:"ISI.appspot.com",messagingSenderId:"ISI",appId:"ISI"};
+const DAYS=["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+const FQ={w:"Mingguan",o:"2 minggu sekali (ganjil)",e:"2 minggu sekali (genap)",m:"Bulanan (minggu ke-1)",x:"Minggu tertentu",r:"Random"};
+const ROLE={owner:"Owner",admin:"Admin",checker:"Checker"};
+let A,AU,F,fs,auth,CFG;
+const S={unsubs:[],users:[],user:null,profile:null,role:null,pick:null,sup:[],items:[],checks:[],view:"home",date:null,sid:null,admin:false,me:null,names:{},db:null};
+const $=s=>document.querySelector(s);
+const esc=t=>String(t??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const pd=s=>{const[a,b,c]=s.split("-").map(Number);return new Date(a,b-1,c)};
+const dIdx=d=>(d.getDay()+6)%7;
+function wkNo(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const n=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-n);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7)}
+function wkOk(txt,w){const t=(txt||"").toLowerCase().trim();if(!t||t==="setiap")return true;if(t==="ganjil")return w%2===1;if(t==="genap")return w%2===0;return t.split(/[ ,;]+/).map(Number).includes(w)}
+function supOk(s,d){if(s.day!==dIdx(d))return false;const w=wkNo(d),f=s.freq||"x";return f==="w"||(f==="o"&&w%2===1)||(f==="e"&&w%2===0)||(f==="m"&&d.getDate()<=7)||(f==="x"&&wkOk(s.weeks,w))}
+const supFor=d=>S.sup.filter(s=>supOk(s,d));
+const chk=(d,sid)=>S.checks.find(c=>c.id===iso(d)+"_"+sid);
+const label=d=>DAYS[dIdx(d)]+", "+d.getDate()+"/"+(d.getMonth()+1)+" · Minggu ke-"+wkNo(d)+" "+d.getFullYear();
+const num=v=>v===""||v==null||isNaN(v)?null:Number(v);
+
+function nav(){const t=[["home","Jadwal Cek"],["check","Cek Barang"]];if(S.admin)t.push(["bo","Back Office"]);if(S.role==="owner")t.push(["users","Pengguna"]);
+$("#nav").innerHTML=S.user?t.map(([k,l])=>`<button class="${S.view===k?"on":""}" onclick="go('${k}')">${l}</button>`).join(""):"";
+$("#who").innerHTML=S.user?esc(S.profile.name)+" · "+ROLE[S.role]+' · <a href="#" onclick="doLogout();return false">Keluar</a>':""}
+function go(v,sid){S.view=v;if(sid)S.sid=sid;render();scrollTo(0,0)}
+function render(){nav();const v=S.view;$("#app").innerHTML=!S.user?authView():v==="home"?home():v==="check"?check():v==="users"&&S.role==="owner"?usersView():v==="bo"&&S.admin?bo():"<p>Akses ditolak.</p>"}
+function supRow(s,d){const c=chk(d,s.id);return `<div class="sup" onclick="S.date='${iso(d)}';go('check','${s.id}')"><b>${esc(s.name)}</b><span class="badge ${c?"ok":""}">${c?"✓ sudah dicek":"belum dicek"}</span></div>`}
+function dayBlock(d,title){const l=supFor(d);return `<div class="card"><h2>${title}</h2><div class="mu">${label(d)}</div>`+(l.length?l.map(s=>supRow(s,d)).join(""):`<p class="mu">Tidak ada supplier yang dicek.</p>`)+`</div>`}
+function home(){const t=new Date(),n=new Date(t);n.setDate(t.getDate()+1);const rs=S.sup.filter(s=>s.freq==="r");
+const empty=!S.sup.length?`<div class="card warn">Belum ada supplier. ${S.admin?"Buka tab Back Office untuk mulai input.":"Hubungi admin."}</div>`:"";
+const other=S.pick&&S.pick!==iso(t)&&S.pick!==iso(n)?dayBlock(pd(S.pick),"Jadwal tanggal dipilih"):"";
+return empty+dayBlock(t,"Cek hari ini")+dayBlock(n,"Cek besok")+
+`<div class="card"><h2>Lihat tanggal lain</h2><input type="date" value="${S.pick||""}" onchange="S.pick=this.value;render()"></div>`+other+
+(rs.length?`<div class="card"><h2>Supplier random</h2><div class="mu">Dicek kapan saja diperlukan</div>${rs.map(s=>supRow(s,t)).join("")}</div>`:"")}
+
+function check(){const d=pd(S.date);
+const picker=`<div class="row"><select onchange="S.sid=this.value;render()"><option value="">— Pilih supplier —</option>${S.sup.map(s=>`<option value="${s.id}" ${s.id===S.sid?"selected":""}>${esc(s.name)}</option>`).join("")}</select><input type="date" value="${S.date}" onchange="S.date=this.value;render()"></div><div class="mu" style="margin-top:6px">${label(d)}</div>`;
+const s=S.sup.find(x=>x.id===S.sid);
+if(!s)return `<div class="card"><h2>Cek barang</h2>${picker}<p class="mu">Pilih nama supplier untuk menampilkan daftar barang.</p></div>`;
+const c=chk(d,s.id)||{},st=c.stocks||{};const all=S.items.filter(i=>i.sup===s.id);
+const row=i=>`<tr><td>${esc(i.name)}<div class="mu">target ${i.target} ${esc(i.unit)}</div></td><td><input class="st" type="number" inputmode="decimal" min="0" data-id="${i.id}" value="${st[i.id]??""}" oninput="upd(this)"> <span class="mu">${esc(i.unit)}</span></td><td class="ord" id="o_${i.id}">${ordTxt(st[i.id],i)}</td></tr>`;
+return `<div class="card"><h2>Cek barang</h2>${picker}${c.by?`<div class="mu">Sudah dicek oleh ${esc(c.byName||"-")}</div>`:""}
+${all.length?`<div class="sc"><table><tr><th>Barang</th><th>Stok awal (isi)</th><th>Harus diorder</th></tr>${all.map(row).join("")}</table></div>`:`<p class="mu">Belum ada daftar barang untuk supplier ini.</p>`}
+<h3>Catatan untuk supplier</h3><textarea id="note" placeholder="Pesan / catatan untuk salesman…">${esc(c.note||"")}</textarea>
+<div class="warn" style="margin-top:12px"><label><input type="checkbox" id="bs" ${c.bs?"checked":""}> <b>Reminder:</b> sudah cek barang BS / Expired untuk supplier ini</label></div>
+<p><button class="b" onclick="save()">Simpan hasil cek</button> <span class="mu" id="msg"></span></p></div>`}
+function ordTxt(v,i){const n=num(v);return n==null?"–":Math.max(0,i.target-n)+" "+esc(i.unit)}
+function upd(el){const i=S.items.find(x=>x.id===el.dataset.id);$("#o_"+i.id).textContent=ordTxt(el.value===""?null:el.value,i)}
+async function save(){const stocks={};document.querySelectorAll("input.st").forEach(e=>{const n=num(e.value===""?null:e.value);if(n!=null)stocks[e.dataset.id]=n});
+const d=pd(S.date),id=iso(d)+"_"+S.sid;
+try{await S.db.doc("checks/"+id).set({date:iso(d),sup:S.sid,by:S.me,byName:S.profile.name,stocks,note:$("#note").value,bs:$("#bs").checked,at:Date.now()});$("#msg").textContent="Tersimpan ✓"}catch(e){$("#msg").textContent="Gagal menyimpan: "+(e.message||e.code)}}
+
+function bo(){
+const so=S.sup.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");
+return `<div class="card"><h2>Supplier &amp; jadwal salesman</h2>
+<div class="row"><input id="sn" placeholder="Nama supplier"><select id="sd">${DAYS.map((d,i)=>`<option value="${i}">${d}</option>`).join("")}</select><select id="sf">${Object.entries(FQ).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select><input id="sw" placeholder="Minggu ke (untuk Minggu tertentu): 42,44" size="26"><button class="b" onclick="addSup()">Tambah</button></div>
+${S.sup.map(s=>`<div class="sup" style="cursor:default"><span><b>${esc(s.name)}</b><div class="mu">${DAYS[s.day]} · ${FQ[s.freq||"x"]}${(s.freq||"x")==="x"?" "+esc(s.weeks||""):""}</div></span><button class="x" onclick="del('suppliers','${s.id}')">✕</button></div>`).join("")}</div>
+<div class="card"><h2>Daftar barang per supplier</h2>
+<div class="row"><select id="is">${so}</select><input id="in" placeholder="Nama barang"><input id="iu" placeholder="Satuan" size="7"><input id="it" type="number" placeholder="Target stok" style="width:110px"><button class="b" onclick="addItem()">Tambah</button></div>
+${S.sup.map(s=>{const l=S.items.filter(i=>i.sup===s.id);return l.length?`<h3>${esc(s.name)}</h3>`+l.map(i=>`<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--bd);padding:5px 0"><span>${esc(i.name)} <span class="mu">target ${i.target} ${esc(i.unit)}</span></span><button class="x" onclick="del('items','${i.id}')">✕</button></div>`).join(""):""}).join("")}</div>
+<div class="card"><h2>Hasil cek &amp; order</h2>
+${[...S.checks].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,40).map(c=>{const s=S.sup.find(x=>x.id===c.sup);return `<h3>${esc(s?s.name:"(supplier dihapus)")} · ${label(pd(c.date))}</h3><div class="mu">Checker: ${esc(c.byName||"-")} · BS/Expired: ${c.bs?"✓ dicek":"belum"}</div><div class="sc"><table><tr><th>Barang</th><th>Sisa</th><th>Order</th></tr>${Object.entries(c.stocks||{}).map(([k,v])=>{const i=S.items.find(x=>x.id===k);return i?`<tr><td>${esc(i.name)}</td><td>${v} ${esc(i.unit)}</td><td class="ord">${Math.max(0,i.target-v)} ${esc(i.unit)}</td></tr>`:""}).join("")}</table></div>${c.note?`<div class="mu">Catatan: ${esc(c.note)}</div>`:""}`}).join("")||`<p class="mu">Belum ada hasil cek.</p>`}</div>`}
+async function addSup(){const n=$("#sn").value.trim();if(!n)return;await F.addDoc(F.collection(fs,"suppliers"),{name:n,day:+$("#sd").value,freq:$("#sf").value,weeks:$("#sw").value.trim()});$("#sn").value=""}
+async function addItem(){const n=$("#in").value.trim(),t=num($("#it").value);if(!n||t==null||!$("#is").value)return alert("Lengkapi nama barang, supplier, dan target stok.");
+await F.addDoc(F.collection(fs,"items"),{sup:$("#is").value,name:n,unit:$("#iu").value.trim()||"pcs",target:t});$("#in").value="";$("#it").value=""}
+async function del(c,id){if(confirm("Hapus data ini?"))await S.db.doc(c+"/"+id).delete()}
+
+const amsg=t=>{const e=$("#amsg");if(e)e.textContent=t};
+const errTxt=e=>({"auth/invalid-credential":"Email atau password salah","auth/email-already-in-use":"Email sudah terdaftar","auth/weak-password":"Password minimal 6 karakter","auth/invalid-email":"Format email salah","auth/too-many-requests":"Terlalu banyak percobaan, coba lagi nanti","permission-denied":"Tidak punya izin"}[e.code]||e.message||e.code);
+function authView(){
+if(S.noCfg)return `<div class="card warn"><b>Firebase belum diisi.</b> Isi FIREBASE_CONFIG di bagian atas script index.html (lihat langkah setup).</div>`;
+if(S.needSetup)return `<div class="card"><h2>Setup pertama: buat akun Owner</h2><p class="mu">Akun ini jadi pemilik aplikasi dan bisa menambah pengguna lain.</p><div class="row" style="flex-direction:column;align-items:stretch"><input id="an" placeholder="Nama"><input id="ae" type="email" placeholder="Email"><input id="ap" type="password" placeholder="Password (min. 6 karakter)"><button class="b" onclick="doSetup()">Buat akun Owner</button><div class="mu" id="amsg"></div></div></div>`;
+return `<div class="card"><h2>Masuk</h2><div class="row" style="flex-direction:column;align-items:stretch"><input id="ae" type="email" placeholder="Email"><input id="ap" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"><button class="b" onclick="doLogin()">Masuk</button><div class="mu" id="amsg"></div></div></div>`}
+async function doLogin(){try{await AU.signInWithEmailAndPassword(auth,$("#ae").value.trim(),$("#ap").value)}catch(e){amsg(errTxt(e))}}
+async function doSetup(){const n=$("#an").value.trim(),e=$("#ae").value.trim(),p=$("#ap").value;if(!n||!e||p.length<6)return amsg("Isi nama, email, dan password (min. 6 karakter)");
+S.busy=true;try{const c=await AU.createUserWithEmailAndPassword(auth,e,p);const b=F.writeBatch(fs);b.set(F.doc(fs,"meta/owner"),{uid:c.user.uid});b.set(F.doc(fs,"users/"+c.user.uid),{name:n,email:e,role:"owner",active:true});await b.commit();S.busy=false;S.needSetup=false;afterLogin(c.user)}catch(x){S.busy=false;amsg(errTxt(x))}}
+async function doLogout(){await AU.signOut(auth)}
+function clearAll(){S.unsubs.forEach(u=>u());S.unsubs=[];Object.assign(S,{user:null,profile:null,role:null,admin:false,sup:[],items:[],checks:[],users:[],view:"home"})}
+async function afterLogin(u){let snap;try{snap=await F.getDoc(F.doc(fs,"users/"+u.uid))}catch(e){}
+if(!snap||!snap.exists()||snap.data().active===false){await AU.signOut(auth);setTimeout(()=>amsg("Akun belum terdaftar atau dinonaktifkan. Hubungi owner."),50);return}
+const p=snap.data();Object.assign(S,{user:u,me:u.uid,profile:p,role:p.role,admin:p.role==="owner"||p.role==="admin"});
+sub("suppliers","sup");sub("items","items");sub("checks","checks");if(p.role==="owner")sub("users","users");render()}
+
+function usersView(){return `<div class="card"><h2>Tambah pengguna</h2><div class="row"><input id="un" placeholder="Nama"><input id="ue" type="email" placeholder="Email"><input id="up" placeholder="Password awal (min. 6)"><select id="ur"><option value="checker">Checker</option><option value="admin">Admin</option></select><button class="b" onclick="addUser()">Tambah</button></div><div class="mu" id="umsg"></div></div>
+<div class="card"><h2>Daftar pengguna</h2><div class="mu">Owner: semua akses · Admin: Back Office + cek barang · Checker: cek barang saja</div>${S.users.map(u=>`<div class="sup" style="cursor:default"><span><b>${esc(u.name)}</b> <span class="tag">${ROLE[u.role]||u.role}</span><div class="mu">${esc(u.email)}${u.active===false?" · NONAKTIF":""}</div></span>${u.role==="owner"?"":`<span class="row"><select onchange="setRole('${u.id}',this.value)"><option value="checker" ${u.role==="checker"?"selected":""}>Checker</option><option value="admin" ${u.role==="admin"?"selected":""}>Admin</option></select><button class="b g" onclick="toggleU('${u.id}',${u.active===false})">${u.active===false?"Aktifkan":"Nonaktifkan"}</button><button class="b g" onclick="resetPw('${esc(u.email)}')">Reset PW</button><button class="x" onclick="delU('${u.id}')">✕</button></span>`}</div>`).join("")}</div>`}
+const umsg=t=>{const e=$("#umsg");if(e)e.textContent=t};
+async function addUser(){const n=$("#un").value.trim(),e=$("#ue").value.trim(),p=$("#up").value,r=$("#ur").value;if(!n||!e||p.length<6)return umsg("Isi nama, email, dan password (min. 6 karakter)");
+try{const sec=A.initializeApp(CFG,"sec"+Date.now()),sa=AU.getAuth(sec);const c=await AU.createUserWithEmailAndPassword(sa,e,p);await AU.signOut(sa);A.deleteApp(sec);
+await S.db.doc("users/"+c.user.uid).set({name:n,email:e,role:r,active:true});["un","ue","up"].forEach(i=>$("#"+i).value="");umsg("Pengguna ditambahkan ✓")}catch(x){umsg(errTxt(x))}}
+const upU=(id,o)=>F.updateDoc(F.doc(fs,"users/"+id),o).catch(x=>alert(errTxt(x)));
+const setRole=(id,r)=>upU(id,{role:r}),toggleU=(id,a)=>upU(id,{active:a});
+async function resetPw(e){try{await AU.sendPasswordResetEmail(auth,e);alert("Email reset password dikirim ke "+e)}catch(x){alert(errTxt(x))}}
+async function delU(id){if(confirm("Hapus pengguna ini dari aplikasi?"))await S.db.doc("users/"+id).delete()}
+
+function sub(col,key){S.unsubs.push(S.db.collection(col).onSnapshot(q=>{S[key]=q.docs.map(d=>({id:d.id,...d.data()}));
+const a=document.activeElement,ed=a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName);
+if(ed&&((S.view==="check"&&a.tagName!=="SELECT")||(S.view==="bo"&&a.id)||S.view==="users"))return;render()},e=>{console.error(col,e)}))}
+(async()=>{S.date=iso(new Date());CFG=FIREBASE_CONFIG;
+if(CFG.apiKey.startsWith("ISI")){S.noCfg=true;render();return}
+const V="10.12.2",u=m=>`https://www.gstatic.com/firebasejs/${V}/firebase-${m}.js`;
+[A,AU,F]=await Promise.all([import(u("app")),import(u("auth")),import(u("firestore"))]);
+const app=A.initializeApp(CFG);auth=AU.getAuth(app);fs=F.getFirestore(app);
+S.db={collection:n=>({onSnapshot:(cb,er)=>F.onSnapshot(F.collection(fs,n),q=>cb({docs:q.docs.map(d=>({id:d.id,data:()=>d.data()}))}),er)}),
+doc:p=>({set:o=>F.setDoc(F.doc(fs,p),o),delete:()=>F.deleteDoc(F.doc(fs,p))})};
+try{S.needSetup=!(await F.getDoc(F.doc(fs,"meta/owner"))).exists()}catch(e){}
+AU.onAuthStateChanged(auth,u=>{if(S.busy)return;if(u)afterLogin(u);else{clearAll();render()}});
+render()})();
+</script></body></html>
