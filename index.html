@@ -35,6 +35,7 @@ th{font-size:12px;color:var(--mu)}
 td input.st{width:84px}
 .ord{font-weight:700;color:var(--pr);font-size:17px;white-space:nowrap}
 .warn{background:var(--wa);border-radius:10px;padding:10px}
+td.no{color:var(--mu);width:28px}
 .tag{font-size:11px;color:var(--mu);border:1px solid var(--bd);border-radius:6px;padding:0 5px;margin-left:4px}
 </style></head><body>
 <header><div class="brand"><span>📦 SR Cek Stok · Sumber Rasa</span><span id="who"></span></div><nav id="nav"></nav></header>
@@ -64,7 +65,7 @@ function nav(){const t=[["home","Jadwal Cek"],["check","Cek Barang"]];if(S.admin
 $("#nav").innerHTML=S.user?t.map(([k,l])=>`<button class="${S.view===k?"on":""}" onclick="go('${k}')">${l}</button>`).join(""):"";
 $("#who").innerHTML=S.user?esc(S.profile.name)+" · "+ROLE[S.role]+' · <a href="#" onclick="doLogout();return false">Keluar</a>':""}
 function go(v,sid){S.view=v;if(sid)S.sid=sid;render();scrollTo(0,0)}
-function render(){nav();const v=S.view;$("#app").innerHTML=!S.user?authView():v==="home"?home():v==="check"?check():v==="users"&&S.role==="owner"?usersView():v==="bo"&&S.admin?bo():"<p>Akses ditolak.</p>"}
+function render(){nav();const v=S.view;$("#app").innerHTML=!S.user?authView():v==="home"?home():v==="check"?check():v==="users"&&S.role==="owner"?usersView():v==="bo"&&S.admin?bo():"<p>Akses ditolak.</p>";if(v==="check")applyView()}
 function supRow(s,d){const c=chk(d,s.id);return `<div class="sup" onclick="S.date='${iso(d)}';go('check','${s.id}')"><b>${esc(s.name)}</b><span class="badge ${c?"ok":""}">${c?"✓ sudah dicek":"belum dicek"}</span></div>`}
 function dayBlock(d,title){const l=supFor(d);return `<div class="card"><h2>${title}</h2><div class="mu">${label(d)}</div>`+(l.length?l.map(s=>supRow(s,d)).join(""):`<p class="mu">Tidak ada supplier yang dicek.</p>`)+`</div>`}
 function home(){const t=new Date(),n=new Date(t);n.setDate(t.getDate()+1);const rs=S.sup.filter(s=>s.freq==="r");
@@ -79,12 +80,18 @@ const picker=`<div class="row"><select onchange="S.sid=this.value;render()"><opt
 const s=S.sup.find(x=>x.id===S.sid);
 if(!s)return `<div class="card"><h2>Cek barang</h2>${picker}<p class="mu">Pilih nama supplier untuk menampilkan daftar barang.</p></div>`;
 const c=chk(d,s.id)||{},st=c.stocks||{};const all=S.items.filter(i=>i.sup===s.id);
-const row=i=>`<tr><td>${esc(i.name)}<div class="mu">target ${i.target} ${esc(i.unit)}</div></td><td><input class="st" type="number" inputmode="decimal" min="0" data-id="${i.id}" value="${st[i.id]??""}" oninput="upd(this)"> <span class="mu">${esc(i.unit)}</span></td><td class="ord" id="o_${i.id}">${ordTxt(st[i.id],i)}</td></tr>`;
+const row=i=>`<tr data-n="${esc(i.name.toLowerCase())}"><td class="no"></td><td>${esc(i.name)}<div class="mu">target ${i.target} ${esc(i.unit)}</div></td><td><input class="st" type="number" inputmode="decimal" min="0" data-id="${i.id}" value="${st[i.id]??""}" oninput="upd(this)"> <span class="mu">${esc(i.unit)}</span></td><td class="ord" id="o_${i.id}">${ordTxt(st[i.id],i)}</td></tr>`;
 return `<div class="card"><h2>Cek barang</h2>${picker}${c.by?`<div class="mu">Sudah dicek oleh ${esc(c.byName||"-")}</div>`:""}
-${all.length?`<div class="sc"><table><tr><th>Barang</th><th>Stok awal (isi)</th><th>Harus diorder</th></tr>${all.map(row).join("")}</table></div>`:`<p class="mu">Belum ada daftar barang untuk supplier ini.</p>`}
+${all.length?`<div class="row" style="margin:10px 0"><input type="search" id="q" placeholder="🔍 Cari produk…" value="${esc(S.q||"")}" oninput="S.q=this.value;applyView()" style="flex:1;min-width:140px"><button class="b" id="sa" onclick="srt('a')">A–Z</button><button class="b g" id="sz" onclick="srt('z')">Z–A</button></div><div class="mu" id="cnt"></div><div class="sc"><table id="tb"><tr><th>No</th><th>Barang</th><th>Stok awal (isi)</th><th>Harus diorder</th></tr>${all.map(row).join("")}</table></div>`:`<p class="mu">Belum ada daftar barang untuk supplier ini.</p>`}
 <h3>Catatan untuk supplier</h3><textarea id="note" placeholder="Pesan / catatan untuk salesman…">${esc(c.note||"")}</textarea>
 <div class="warn" style="margin-top:12px"><label><input type="checkbox" id="bs" ${c.bs?"checked":""}> <b>Reminder:</b> sudah cek barang BS / Expired untuk supplier ini</label></div>
 <p><button class="b" onclick="save()">Simpan hasil cek</button> <span class="mu" id="msg"></span></p></div>`}
+function srt(d){S.srt=d;applyView()}
+function applyView(){const tb=$("#tb");if(!tb)return;const rows=[...tb.querySelectorAll("tr[data-n]")];if(!rows.length)return;const body=rows[0].parentNode,q=(S.q||"").toLowerCase().trim(),z=S.srt==="z";
+rows.sort((a,b)=>a.dataset.n.localeCompare(b.dataset.n,"id")*(z?-1:1));let n=0;
+rows.forEach(r=>{body.appendChild(r);const ok=!q||r.dataset.n.includes(q);r.style.display=ok?"":"none";if(ok)r.firstChild.textContent=++n});
+$("#sa").className="b"+(z?" g":"");$("#sz").className="b"+(z?"":" g");
+$("#cnt").textContent=(q?n+" dari ":"")+rows.length+" barang"+(q&&!n?" · tidak ditemukan":"")}
 function ordTxt(v,i){const n=num(v);return n==null?"–":Math.max(0,i.target-n)+" "+esc(i.unit)}
 function upd(el){const i=S.items.find(x=>x.id===el.dataset.id);$("#o_"+i.id).textContent=ordTxt(el.value===""?null:el.value,i)}
 async function save(){const stocks={};document.querySelectorAll("input.st").forEach(e=>{const n=num(e.value===""?null:e.value);if(n!=null)stocks[e.dataset.id]=n});
@@ -136,7 +143,9 @@ async function delU(id){if(confirm("Hapus pengguna ini dari aplikasi?"))await S.
 function sub(col,key){S.unsubs.push(S.db.collection(col).onSnapshot(q=>{S[key]=q.docs.map(d=>({id:d.id,...d.data()}));
 const a=document.activeElement,ed=a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName);
 if(ed&&((S.view==="check"&&a.tagName!=="SELECT")||(S.view==="bo"&&a.id)||S.view==="users"))return;render()},e=>{console.error(col,e)}))}
+addEventListener("unhandledrejection",e=>{$("#app").innerHTML='<div class="card warn"><b>Gagal memuat.</b> '+esc((e.reason&&e.reason.message)||e.reason)+'<br>Pastikan HP online, lalu buka lewat alamat GitHub Pages di Chrome.</div>'});
 (async()=>{S.date=iso(new Date());CFG=FIREBASE_CONFIG;
+if(!/^https?:$/.test(location.protocol)){$("#app").innerHTML='<div class="card warn"><b>File tidak bisa dibuka langsung dari HP.</b> Buka lewat alamat GitHub Pages di Chrome, misalnya https://sumberrasakantor-droid.github.io/SR-Cek-Stok/</div>';return}
 if(CFG.apiKey.startsWith("ISI")){S.noCfg=true;render();return}
 const V="10.12.2",u=m=>`https://www.gstatic.com/firebasejs/${V}/firebase-${m}.js`;
 [A,AU,F]=await Promise.all([import(u("app")),import(u("auth")),import(u("firestore"))]);
